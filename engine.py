@@ -2,6 +2,10 @@ import initialize_game
 import cards
 import random
 
+class Game:
+    def __init__(self, card_order):
+        self.card_order = card_order
+
 class Player:
     def __init__(self, deck, number):
         self.deck = deck
@@ -85,22 +89,22 @@ def check_winner(game_locations, player1, player2):
             location_winners.append(None)
     return location_winners, player1_total_power, player2_total_power
 
-def execute_turn(choice_dict1, choice_dict2, game_locations, player1, player2):
+def execute_turn(choice_dict1, choice_dict2, game_locations, player1, player2, game):
     if player1.priority:
         for card in choice_dict1:
-            play_card(card, choice_dict1, game_locations, player1)
+            play_card(card, choice_dict1, game_locations, player1, game)
 
         for card in choice_dict2:
-            play_card(card, choice_dict2, game_locations, player2)
+            play_card(card, choice_dict2, game_locations, player2, game)
 
     elif player2.priority:
         for card in choice_dict2:
-            play_card(card, choice_dict2, game_locations, player2)
+            play_card(card, choice_dict2, game_locations, player2, game)
 
         for card in choice_dict1:
-            play_card(card, choice_dict1, game_locations, player1)
+            play_card(card, choice_dict1, game_locations, player1, game)
 
-def play_card(card, choice_dict, game_locations, player):
+def play_card(card, choice_dict, game_locations, player, game):
     location_index = choice_dict[card]
     import copy
     card_obj = copy.deepcopy(cards.card_lookup[card])
@@ -117,6 +121,8 @@ def play_card(card, choice_dict, game_locations, player):
     else:
         location.card_list_2.append(card_obj)
         location.base_power2 += card_obj.base_power
+    card_obj.order = game.card_order + 1
+    game.card_order += 1
 
     if cards.card_lookup[card].type == "on_reveal":
         cards.card_lookup[card].ability(player, game_locations, location_index)
@@ -199,12 +205,13 @@ def print_location_powers(game_locations):
         print("-" * 40)
 
 def main():
+    game = Game(0)
     game_locations, player1_shuffled_deck, player2_shuffled_deck = initialize_game.main()
     player1, player2 = create_player_data(player1_shuffled_deck,player2_shuffled_deck)
 
     turn_number = 1
     for turn_number in range(1, 7):  # 1, 2, 3, 4, 5, 6
-        run_turn(game_locations, player1, player2, turn_number)
+        run_turn(game_locations, player1, player2, turn_number, game)
 
     game_winner = end_game(game_locations, player1, player2)
     if game_winner != None:
@@ -212,13 +219,13 @@ def main():
     else:
         print(f'Tie!')
 
-def run_turn(game_locations, player1, player2, turn_number):
+def run_turn(game_locations, player1, player2, turn_number, game):
 
     for i in range(len(game_locations)):
         print(game_locations[i].name)
 
     choice_dict1, choice_dict2 = create_turn(game_locations, turn_number, player1, player2)
-    execute_turn(choice_dict1, choice_dict2, game_locations, player1, player2)
+    execute_turn(choice_dict1, choice_dict2, game_locations, player1, player2, game)
     check_end_of_turn(game_locations, player1, player2)
     update_ongoing(game_locations)
 
