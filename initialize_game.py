@@ -1,3 +1,4 @@
+import copy
 import random
 import locations
 import decks
@@ -39,7 +40,9 @@ def create_locations(locations_list):
     return [location_0, location_1, location_2]
 
 def create_deck(deck_list):
-    deck = deck_list
+    deck = []
+    for card in deck_list:
+        deck.append(copy.deepcopy(card))
     random.shuffle(deck)
     return deck
 
