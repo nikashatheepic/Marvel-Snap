@@ -91,23 +91,18 @@ def check_winner(game_locations, player1, player2):
 
 def execute_turn(choice_dict1, choice_dict2, game_locations, player1, player2, game):
     if player1.priority:
-        for card in choice_dict1:
-            play_card(card, choice_dict1, game_locations, player1, game)
+        for card_obj in choice_dict1:
+            play_card(card_obj, choice_dict1, game_locations, player1, game, player1, player2)
+        for card_obj in choice_dict2:
+            play_card(card_obj, choice_dict2, game_locations, player2, game, player1, player2)
+    else:
+        for card_obj in choice_dict2:
+            play_card(card_obj, choice_dict2, game_locations, player2, game, player1, player2)
+        for card_obj in choice_dict1:
+            play_card(card_obj, choice_dict1, game_locations, player1, game, player1, player2)
 
-        for card in choice_dict2:
-            play_card(card, choice_dict2, game_locations, player2, game)
-
-    elif player2.priority:
-        for card in choice_dict2:
-            play_card(card, choice_dict2, game_locations, player2, game)
-
-        for card in choice_dict1:
-            play_card(card, choice_dict1, game_locations, player1, game)
-
-def play_card(card, choice_dict, game_locations, player, game):
-    location_index = choice_dict[card]
-    import copy
-    card_obj = copy.deepcopy(cards.card_lookup[card])
+def play_card(card_obj, choice_dict, game_locations, player, game, player1, player2):
+    location_index = choice_dict[card_obj]
     card_obj.owner = player
 
     if player.pending_buffs > 0:
@@ -121,21 +116,28 @@ def play_card(card, choice_dict, game_locations, player, game):
     else:
         location.card_list_2.append(card_obj)
         location.base_power2 += card_obj.base_power
+
     card_obj.order = game.card_order + 1
     game.card_order += 1
 
-    if cards.card_lookup[card].type == "on_reveal":
-        cards.card_lookup[card].ability(player, game_locations, location_index)
+    if card_obj.type == "on_reveal":
+        card_obj.ability(player, game_locations, location_index, player1, player2, card_obj)
 
-    update_ongoing(game_locations)
-
+    update_power(game_locations)
     check_on_play_locations(game_locations, location_index, player)
 
-def update_ongoing(game_locations):
+def update_power(game_locations):
 
     for location in game_locations:
+        location.base_power1 = 0
+        location.base_power2 = 0
         location.ongoing_power1 = 0
         location.ongoing_power2 = 0
+
+        for card in location.card_list_1:
+            location.base_power1 += card.base_power
+        for card in location.card_list_2:
+            location.base_power2 += card.base_power
 
         p1_ongoing = [card for card in location.card_list_1 if card.type == "ongoing"]
         p1_ongoing.sort(key=lambda c: getattr(c, "priority", 0))
@@ -157,9 +159,10 @@ def draw_card(player):
 
 def receive_player_input(player, game_locations):
     choice_dict = {}
-    location_dict = {"left":0, "middle":1, "right":2}
+    location_dict = {"left": 0, "middle": 1, "right": 2}
 
-    print(player.hand)
+    # Display hand (show card names)
+    print([card.name for card in player.hand])
 
     while True:
         card_choice = input("Which card would you like to play? ").strip().lower()
@@ -171,25 +174,18 @@ def receive_player_input(player, game_locations):
             print("Invalid location. Please enter left, middle, or right.")
             continue
 
-        location_capacity1 = len(game_locations[location_dict[location_choice]].card_list_1)
-        location_capacity2 = len(game_locations[location_dict[location_choice]].card_list_2)
+        # Find the card object in hand by name
+        card_obj = next((c for c in player.hand if c.name == card_choice), None)
 
-        if card_choice in cards.card_lookup and card_choice in player.hand:
-            if player.energy >= cards.card_lookup[card_choice].cost:
-                player.energy -= cards.card_lookup[card_choice].cost
-                if player.number == 1:
-                    if location_capacity1 < 4:
-                        choice_dict[card_choice] = game_locations[location_dict[location_choice]].position
+        if card_obj and player.energy >= card_obj.cost:
+            loc_idx = location_dict[location_choice]
+            location = game_locations[loc_idx]
+            card_list = location.card_list_1 if player.number == 1 else location.card_list_2
 
-                        player.hand.remove(card_choice)
-                        location_capacity1 += 1
-
-                if player.number == 2:
-                    if location_capacity2 < 4:
-                        choice_dict[card_choice] = game_locations[location_dict[location_choice]].position
-
-                        player.hand.remove(card_choice)
-                        location_capacity2 += 1
+            if len(card_list) < 4:
+                player.energy -= card_obj.cost
+                choice_dict[card_obj] = loc_idx  # Store object, not string
+                player.hand.remove(card_obj)
 
     return choice_dict
 
@@ -205,9 +201,9 @@ def print_location_powers(game_locations):
         print("-" * 40)
 
 def main():
-    game = Game(0)
     game_locations, player1_shuffled_deck, player2_shuffled_deck = initialize_game.main()
     player1, player2 = create_player_data(player1_shuffled_deck,player2_shuffled_deck)
+    game = Game(0)
 
     turn_number = 1
     for turn_number in range(1, 7):  # 1, 2, 3, 4, 5, 6
@@ -223,17 +219,37 @@ def run_turn(game_locations, player1, player2, turn_number, game):
 
     for i in range(len(game_locations)):
         print(game_locations[i].name)
+    print(f"Turn number: {turn_number}")
 
     choice_dict1, choice_dict2 = create_turn(game_locations, turn_number, player1, player2)
     execute_turn(choice_dict1, choice_dict2, game_locations, player1, player2, game)
-    check_end_of_turn(game_locations, player1, player2)
-    update_ongoing(game_locations)
+    check_end_of_turn(game_locations, player1, player2, turn_number)
+    update_power(game_locations)
 
     print_location_powers(game_locations)
 
-def check_end_of_turn(game_locations, player1, player2):
+    discard1=[]
+    discard2=[]
+    destroy1=[]
+    destroy2=[]
+
+    for i in range(len(player1.discard_pool)):
+        discard1.append(player1.discard_pool[i].name)
+    for i in range(len(player2.discard_pool)):
+        discard2.append(player2.discard_pool[i].name)
+
+    for i in range(len(player1.destroy_pool)):
+        destroy1.append(player1.destroy_pool[i].name)
+    for i in range(len(player2.destroy_pool)):
+        destroy2.append(player2.destroy_pool[i].name)
+
+    print(discard1,discard2,destroy1,destroy2)
+
+
+
+def check_end_of_turn(game_locations, player1, player2, turn_number):
     check_end_of_turn_cards(game_locations, player1, player2)
-    check_end_of_turn_locations(game_locations)
+    check_end_of_turn_locations(game_locations, turn_number, player1, player2)
 
 def check_end_of_turn_cards(game_locations, player1, player2):
     if player1.priority:
@@ -249,16 +265,16 @@ def check_end_of_turn_cards(game_locations, player1, player2):
                 if card.type == "end_of_turn":
                     card.ability(card, player, game_locations, location.position)
 
-def check_end_of_turn_locations(game_locations):
+def check_end_of_turn_locations(game_locations, turn_number, player1, player2):
     for i in range(len(game_locations)):
         if game_locations[i].ability_type == "end_of_turn" and game_locations[i].revealed:
-            game_locations[i].ability(game_locations, game_locations[i])
+            game_locations[i].ability(game_locations, i, turn_number, player1, player2)
 
 def check_on_play_locations(game_locations, location_index, player):
     if game_locations[location_index].revealed and game_locations[location_index].ability_type == "on_play":
         game_locations[location_index].ability(game_locations, location_index, player)
 
-    update_ongoing(game_locations)
+    update_power(game_locations)
 
 def end_game(game_locations, player1, player2):
     location_winners, player1_total_power, player2_total_power = check_winner(game_locations, player1, player2)
