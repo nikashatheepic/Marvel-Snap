@@ -1,2 +1,76 @@
-please excuse the lack of an adequate readme, this project is still a work in progress. 
-this clone of the card game - Marvel Snap ive built from scratch in python was a test I gave to myself, and is the second project im working on. currently ive implemented most of the logic required for the game to run. some specific ability types are missing, a tiny logical error in the order cards are played, and two separate UIs for two players. currently the game is technically playable, but because of the lack of a UI, the user input system is in dire need of polishing. currently, when a game begins, it tells player one the cards in their hand, and the locations that are revealed. then the program enters a sentinel loop, asking the player to enter a card, and the location where they want to put it, or to skip. repeats for player 2 until the game ends after turn 6. 
+# Marvel Snap in Python
+
+A two-player card game inspired by [Marvel Snap](https://www.marvelsnap.com/), written in Python. It has a full game engine plus a graphical interface built with the [Arcade](https://api.arcade.academy/) library.
+
+![Gameplay](docs/gameplay.gif)
+
+## How the game works
+
+- The game lasts **6 turns**. Win **2 of the 3 locations** to win the game. If that's tied, whoever has more total Power wins.
+- Each turn you get **Energy** equal to the turn number. Cards cost Energy and add **Power** to the location you play them at.
+- Both players choose their cards in secret, then everything is revealed. The player who is winning more locations reveals first.
+- One location is revealed per turn, and every location and most cards have a special ability.
+
+Two players share one screen. The game hides each player's hand while the other one is choosing.
+
+| Choosing cards | Revealing cards |
+|---|---|
+| ![Choosing a card](docs/choosing.png) | ![A card destroyed by Death's Domain](docs/reveal.png) |
+| **End-of-turn effects** | **Game over** |
+| ![End of turn effects](docs/end_of_turn.png) | ![Game over screen](docs/game_over.png) |
+
+## Running it
+
+You need **Python 3.10 or newer**.
+
+**Windows**
+```
+py -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python ui.py
+```
+
+**macOS / Linux**
+```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python ui.py
+```
+
+There's also a text-only version that runs in the terminal: `python engine.py`.
+
+## Content
+
+**15 cards** with four kinds of abilities:
+
+| Type | When it happens | Examples |
+|---|---|---|
+| On Reveal | Once, when the card is played | Forge, Iceman, Silver Sable, Medusa, Wolfsbane, Elektra |
+| Ongoing | All the time, while the card is on the board | Iron Man, Punisher, Ant-Man, Lizard |
+| End of Turn | At the end of every turn | Adam Warlock |
+| None | Just Power | Misty Knight, Cyclops, The Thing, Hulk |
+
+**8 locations**, 3 chosen at random each game: Death's Domain, Hala, Jotunheim, Muir Island, Murderworld, Asgard, Stark Tower and Danger Room.
+
+## How the code is organized
+
+| File | What it does |
+|---|---|
+| `engine.py` | The game rules: turns, energy, playing cards, turn order, power, and the winner |
+| `cards.py` | The `Card` class, every card's ability, and the card list |
+| `locations.py` | Every location's ability |
+| `decks.py` | The two players' decks |
+| `initialize_game.py` | The `Location` class, plus picking locations and shuffling decks |
+| `ui.py` | The graphical interface: drawing, mouse input, and animations |
+
+A few design decisions:
+
+- **Abilities are functions stored as data.** Each card and location keeps a reference to its ability function plus a type (`on_reveal`, `ongoing`, `end_of_turn`, `on_play`). The engine calls each type at the right moment in the turn, so adding a card means writing one function and one line to create the card, without touching the engine.
+- **Abilities are written from the owner's point of view.** Each one receives `player` and `opponent` instead of checking whether it belongs to player 1 or player 2, so the logic is only written once. Helper methods on `Location`, like `cards_of(player)`, hide how the board stores each side.
+- **The engine doesn't know about the UI.** `resolve_turn` takes an optional `on_step` callback that's called after each card is played. The UI uses it to replay the turn one step at a time with captions and animations, while the text version simply doesn't pass one.
+
+## Credits
+
+This is a fan project for learning purposes and isn't affiliated with Marvel or Second Dinner. Marvel Snap and its characters belong to their owners. Some card and location images were generated with Python's Pillow library.

@@ -13,7 +13,7 @@ def main():
 class Location:
     def __init__(self, name, position, ability=None, ability_type=None):
         self.name = name
-        self.position = position    #0, 1, or 2
+        self.position = position
         self.base_power1 = 0
         self.base_power2 = 0
         self.card_list_1 = []
@@ -25,6 +25,27 @@ class Location:
         self.ongoing_power2 = 0
         self.total_power1 = 0
         self.total_power2 = 0
+
+    def cards_of(self, player):
+        return self.card_list_1 if player.number == 1 else self.card_list_2
+
+    def all_cards(self):
+        return self.card_list_1 + self.card_list_2
+
+    def base_power_of(self, player):
+        return self.base_power1 if player.number == 1 else self.base_power2
+
+    def ongoing_power_of(self, player):
+        return self.ongoing_power1 if player.number == 1 else self.ongoing_power2
+
+    def total_power_of(self, player):
+        return self.total_power1 if player.number == 1 else self.total_power2
+
+    def add_ongoing(self, player, amount):
+        if player.number == 1:
+            self.ongoing_power1 += amount
+        else:
+            self.ongoing_power2 += amount
 
 def create_locations(locations_list):
     location_0 = Location("unknown",0)
