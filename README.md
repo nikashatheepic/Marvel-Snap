@@ -4,6 +4,8 @@ A two-player card game inspired by [Marvel Snap](https://www.marvelsnap.com/), w
 
 ![Gameplay](docs/gameplay.gif)
 
+I built this as a personal challenge: my second Python project, recreating a card game I enjoy playing. It started as a text-only game engine and grew into a full two-player game with 15 cards, 8 locations and an animated interface. The core of it is an event-driven ability system: each card and location carries its own ability, and the engine triggers four kinds of abilities at the right moments in a turn, resolving them in priority order. New cards plug in without changing the engine, and the same engine runs both the terminal and the graphical versions.
+
 ## How the game works
 
 - The game lasts **6 turns**. Win **2 of the 3 locations** to win the game. If that's tied, whoever has more total Power wins.
